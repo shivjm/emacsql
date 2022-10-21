@@ -48,7 +48,7 @@
                        user-emacs-directory)))
   "Path to the EmacSQL backend (this is not the sqlite3 shell).")
 
-(defvar emacsql-sqlite-c-compilers '("cc" "gcc" "clang")
+(defvar emacsql-sqlite-c-compilers '("zig" "cc" "gcc" "clang")
   "List of names to try when searching for a C compiler.
 
 Each is queried using `executable-find', so full paths are
@@ -124,6 +124,11 @@ buffer. This is for debugging purposes."
       (cl-loop while (re-search-forward "-D[A-Z0-9_=]+" nil :no-error)
                collect (match-string 0)))))
 
+(defun emacsql-sqlite-compile-arguments (cc arguments)
+  (cond
+   ((string= (file-name-base cc) "zig") (cons "cc" arguments))
+   (t arguments)))
+
 (defun emacsql-sqlite-compile (&optional o-level async error)
   "Compile the SQLite back-end for EmacSQL, returning non-nil on success.
 If called with non-nil ASYNC, the return value is meaningless.
@@ -156,7 +161,7 @@ If called with non-nil ERROR, signal an error on failure."
             (insert (mapconcat #'identity (cons cc arguments) " ") "\n")
             (let ((pos (point))
                   (ret (apply #'call-process cc nil (if async 0 t) t
-                              arguments)))
+                              (emacsql-sqlite-compile-arguments cc arguments)))
               (cond
                ((zerop ret)
                 (message "Compiling EmacSQL SQLite binary...done")
